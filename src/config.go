@@ -1,0 +1,6 @@
+package main
+
+var (
+	sqlite_file string = "db.sqlite3"
+	self_host   string = "localhost"
+)
