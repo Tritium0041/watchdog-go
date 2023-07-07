@@ -8,7 +8,3 @@ Watchdog-Go
 - 检测flag字段并自动替换
 
 
-issue#1
-- 是使用proxy还是pcap？pcap貌似无法拦截包
-reply#1
-- 手写反向代理，这玩意又不是awd用的，当成waf来写
