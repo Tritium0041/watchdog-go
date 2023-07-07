@@ -2,10 +2,15 @@ package main
 
 import (
 	"database/sql"
+	"embed"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"os"
 )
+
+//go:embed app/*
+var f embed.FS
 
 func mananger(w http.ResponseWriter, r *http.Request) {
 	_, err := os.Stat(sqlite_file)
@@ -25,14 +30,18 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	checkerr(err)
 	requestPath := r.URL.Path
-	if requestPath == "/" {
-		mgrIndex(w, r)
-
+	if requestPath == "/" || requestPath == "/blackicon.png" {
+		mgrStatic(w, r, requestPath)
 	}
-
 }
-func mgrIndex(w http.ResponseWriter, r *http.Request) {
-	page, err := os.ReadFile("static/index.html")
+
+func mgrStatic(w http.ResponseWriter, r *http.Request, Path string) {
+	//如果requestPath为/，则发送index
+	if Path == "/" {
+		Path = "/index.html"
+	}
+	fmt.Printf("app%s\n", Path)
+	page, err := f.ReadFile("app" + Path)
 	checkerr(err)
 	w.Write(page)
 
