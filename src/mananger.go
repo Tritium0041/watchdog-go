@@ -75,12 +75,10 @@ func mgrAuth(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if username != "" {
 		//如果数据库中存在对应的Token，则发送管理界面
 		fmt.Printf("login success\n")
-		page, err := f.ReadFile("app/index.html")
-		checkerr(err)
-		w.Write(page)
-		fmt.Printf("app/index.html\n")
+		w.Write([]byte("Success"))
 	} else {
 		//如果数据库中不存在对应的Token，则发送登录界面
 		fmt.Printf("login failed")
+		w.Write([]byte("Failed"))
 	}
 }
