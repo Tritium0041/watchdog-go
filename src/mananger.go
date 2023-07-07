@@ -37,8 +37,11 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		mgrStatic(w, r, requestPath)
 	} else if requestPath == "/submitToken" && requestMethod == "POST" {
 		mgrAuth(w, r, db)
+	} else if requestPath == "/admin" {
+		mgrAdmin(w, r)
 
 	}
+
 }
 
 func mgrStatic(w http.ResponseWriter, r *http.Request, Path string) {
@@ -75,10 +78,28 @@ func mgrAuth(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if username != "" {
 		//如果数据库中存在对应的Token，则发送管理界面
 		fmt.Printf("login success\n")
+		jwt, err := GenerateJWT(username)
+		checkerr(err)
+		w.Header().Set("Set-Cookie", fmt.Sprintf("jwt=%s;path=/", jwt))
 		w.Write([]byte("Success"))
 	} else {
 		//如果数据库中不存在对应的Token，则发送登录界面
 		fmt.Printf("login failed")
 		w.Write([]byte("Failed"))
 	}
+}
+
+func mgrAdmin(w http.ResponseWriter, r *http.Request) {
+	jwt, err := r.Cookie("jwt")
+	if err != nil {
+		w.Write([]byte("403 Forbidden"))
+		return
+	}
+	_, err = ParseJWT(jwt.Value)
+	if err != nil {
+		w.Write([]byte("403 Forbidden"))
+		return
+	}
+	w.Write([]byte("admin"))
+
 }
