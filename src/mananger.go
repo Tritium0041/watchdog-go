@@ -1,12 +1,14 @@
 package main
 
 import (
+	"crypto/sha1"
 	"database/sql"
 	"embed"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"os"
+	"strings"
 )
 
 //go:embed app/*
@@ -30,8 +32,12 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	checkerr(err)
 	requestPath := r.URL.Path
-	if requestPath == "/" || requestPath == "/blackicon.png" {
+	requestMethod := r.Method
+	if requestPath == "/" || strings.HasPrefix(requestPath, "/static") {
 		mgrStatic(w, r, requestPath)
+	} else if requestPath == "/submitToken" && requestMethod == "POST" {
+		mgrAuth(w, r, db)
+
 	}
 }
 
@@ -45,4 +51,36 @@ func mgrStatic(w http.ResponseWriter, r *http.Request, Path string) {
 	checkerr(err)
 	w.Write(page)
 
+}
+
+func mgrAuth(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	// 获取请求的host
+	//解析post内容
+	r.ParseForm()
+	Token := r.FormValue("Token")
+	fmt.Printf("Token:%s\n", Token)
+	//对Token计算sha1
+	sha1er := sha1.New()
+	sha1er.Write([]byte(Token))
+	hashedtoken := sha1er.Sum(nil)
+	//查询数据库
+	rows, err := db.Query("select username from user where password=?", fmt.Sprintf("%x", hashedtoken))
+	checkerr(err)
+	defer rows.Close()
+	var username string
+	for rows.Next() {
+		err = rows.Scan(&username)
+		checkerr(err)
+	}
+	if username != "" {
+		//如果数据库中存在对应的Token，则发送管理界面
+		fmt.Printf("login success\n")
+		page, err := f.ReadFile("app/index.html")
+		checkerr(err)
+		w.Write(page)
+		fmt.Printf("app/index.html\n")
+	} else {
+		//如果数据库中不存在对应的Token，则发送登录界面
+		fmt.Printf("login failed")
+	}
 }
