@@ -53,18 +53,144 @@
         background-color: #ddd;
         cursor: not-allowed;
     }
+    .panel
+    {
+        position: absolute;
+        top:0%;
+        left: 10%;
+        width: 90%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+    .flat-table {
+        position: absolute;
+        top:15%;
+        left: 5%;
+        width: 90%;
+        border-collapse: collapse;
+    }
+
+    .flat-table th,
+    .flat-table td {
+        padding: 10px;
+        text-align: center;
+    }
+
+    .flat-table th {
+        background-color: rgba(33, 56, 136, 0.6);
+        color: #333;
+    }
+
+    .flat-table tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .action-button {
+        padding: 6px 12px;
+        border: none;
+        background-color: #3498db;
+        color: #fff;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+
+    .action-button:hover {
+        background-color: #2980b9;
+    }
+    /* 样式 */
+    .dropdown {
+        position: absolute;
+        top: 7%;
+        width: 10%;
+        left: 30%;
+
+        display: inline-block;
+        background-color: rgba(33, 56, 136, 0.6);
+        border-radius: 3px;
+        text-align: center;
+    }
+    .dropdown select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: transparent;
+        border: none;
+        padding: 5px 10px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .dropdown select::-ms-expand {
+        display: none;
+    }
+
+    .dropdown select option {
+        background-color: #f9f9f9;
+        color: black;
+    }
 
 </style>
 <img style="pointer-events: none;" src="https://api.yimian.xyz/img?type=wallpaper" class="backgroundImage">
 <div class="menu">
-    <button class="flat-button" name="blacklist">
+    <button class="flat-button" name="blacklist" >
         IP黑名单
     </button>
-    <br>
     <button class="flat-button" name="whitelist">
         IP白名单
     </button>
 
 </div>
+<div class="panel">
+    <div id="blacklist" style="">
+        <button class="flat-button" name="getblacklists" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;">
+            刷新黑名单信息
+        </button>
+        <div class="dropdown">
+        <label for="page-select">选择页数</label>
+        <select id="page-select">
+            <option value="1">第1页</option>
+            <option value="2">第2页</option>
+            <option value="3">第3页</option>
+            <!-- 添加更多页数选项 -->
+        </select>
+        </div>
+        <table class="flat-table">
+            <thead>
+            <tr>
+                <th>IP</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+
+    </div>
+
+</div>
 </body>
+<script>
+    function getBlacklistsnum() {
+        var xmlhttp;
+        if (window.XMLHttpRequest) {
+            //  IE7+, Firefox, Chrome, Opera, Safari 浏览器执行代码
+            xmlhttp = new XMLHttpRequest();
+        }
+        else {
+            // IE6, IE5 浏览器执行代码
+            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        xmlhttp.onreadystatechange = function () {
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                document.getElementById("blacklist").innerHTML = xmlhttp.responseText;
+            }
+        }
+        xmlhttp.open("GET", "/api/blacklistNum", true);
+        xmlhttp.send();
+        
+    }
+</script>
 </html>

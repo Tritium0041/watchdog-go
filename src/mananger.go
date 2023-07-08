@@ -8,6 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,9 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("insert into user (username, password) values ('admin', 'd033e22ae348aeb5660fc2140aec35850c4da997')")
 		checkerr(err)
+		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
+		checkerr(err)
+
 		db.Close()
 
 	}
@@ -39,9 +43,13 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		mgrAuth(w, r, db)
 	} else if requestPath == "/admin" {
 		mgrAdmin(w, r)
-
+	} else if strings.HasPrefix(requestPath, "/api") {
+		if requestPath == "/api/blacklist" {
+			apiBlacklist(w, r, db)
+		} else if requestPath == "/api/blacklistNum" {
+			apiBlacklistNum(w, r, db)
+		}
 	}
-
 }
 
 func mgrStatic(w http.ResponseWriter, r *http.Request, Path string) {
@@ -53,7 +61,6 @@ func mgrStatic(w http.ResponseWriter, r *http.Request, Path string) {
 	page, err := f.ReadFile("app" + Path)
 	checkerr(err)
 	w.Write(page)
-
 }
 
 func mgrAuth(w http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -102,4 +109,36 @@ func mgrAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte("admin"))
 
+}
+
+func apiBlacklistNum(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	rows, err := db.Query("select count(*) from IPblackList")
+	checkerr(err)
+	defer rows.Close()
+	var num int
+	for rows.Next() {
+		err = rows.Scan(&num)
+		checkerr(err)
+	}
+	w.Write([]byte(strconv.Itoa(num)))
+}
+
+func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	num := r.FormValue("num")
+	//将num转为int
+	numint, err := strconv.Atoi(num)
+	checkerr(err)
+	//num是页数，取出10(num-1)-10num的IP
+	rows, err := db.Query("select IP from IPblackList limit ?,?", numint, numint+10)
+	defer rows.Close()
+	var IP []string
+	for rows.Next() {
+		var ip string
+		err = rows.Scan(&ip)
+		checkerr(err)
+		IP = append(IP, ip)
+	}
+	//将IP转为json
+	w.Write([]byte("[" + strings.Join(IP, ",") + "]"))
 }
