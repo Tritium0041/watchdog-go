@@ -144,15 +144,12 @@
 </div>
 <div class="panel">
     <div id="blacklist" style="">
-        <button class="flat-button" name="getblacklists" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;">
+        <button class="flat-button" name="getblacklists" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;" onclick="getBlacklistsnum()">
             刷新黑名单信息
         </button>
         <div class="dropdown">
         <label for="page-select">选择页数</label>
         <select id="page-select">
-            <option value="1">第1页</option>
-            <option value="2">第2页</option>
-            <option value="3">第3页</option>
             <!-- 添加更多页数选项 -->
         </select>
         </div>
@@ -174,23 +171,23 @@
 </body>
 <script>
     function getBlacklistsnum() {
-        var xmlhttp;
-        if (window.XMLHttpRequest) {
-            //  IE7+, Firefox, Chrome, Opera, Safari 浏览器执行代码
-            xmlhttp = new XMLHttpRequest();
-        }
-        else {
-            // IE6, IE5 浏览器执行代码
-            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-        }
-        xmlhttp.onreadystatechange = function () {
-            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-                document.getElementById("blacklist").innerHTML = xmlhttp.responseText;
+        //获取黑名单数量并赋给下拉选单
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/blacklistNum');
+        xhr.send();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var num = xhr.responseText;
+                var select = document.getElementById('page-select');
+                select.innerHTML = '';
+                for (var i = 1; i <= num; i++) {
+                    var option = document.createElement('option');
+                    option.value = i;
+                    option.innerHTML = '第' + i + '页';
+                    select.appendChild(option);
+                }
             }
         }
-        xmlhttp.open("GET", "/api/blacklistNum", true);
-        xmlhttp.send();
-        
     }
 </script>
 </html>

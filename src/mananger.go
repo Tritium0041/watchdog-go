@@ -107,7 +107,9 @@ func mgrAdmin(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("403 Forbidden"))
 		return
 	}
-	w.Write([]byte("admin"))
+	page, err := f.ReadFile("app/admin.html")
+	checkerr(err)
+	w.Write(page)
 
 }
 
