@@ -82,7 +82,7 @@
     }
 
     .flat-table tbody tr:nth-child(even) {
-        background-color: #f9f9f9;
+        background-color: rgba(33, 56, 136, 0.3);
     }
 
     .action-button {
@@ -149,7 +149,7 @@
         </button>
         <div class="dropdown">
         <label for="page-select">选择页数</label>
-        <select id="page-select">
+        <select id="page-select" onfocus="getNum();getBlacklists(number)" onchange="getNum();getBlacklists(number)">
             <!-- 添加更多页数选项 -->
         </select>
         </div>
@@ -170,14 +170,22 @@
 </div>
 </body>
 <script>
+    var number;
     function getBlacklistsnum() {
         //获取黑名单数量并赋给下拉选单
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/api/blacklistNum');
+        xhr.open('GET', '/api/admin/blacklist/num');
         xhr.send();
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var num = xhr.responseText;
+                num = parseInt(num);
+                //num整除10加1
+                if (num % 10 === 0) {
+                    num = num / 10;
+                } else {
+                    num = parseInt(num / 10) + 1;
+                }
                 var select = document.getElementById('page-select');
                 select.innerHTML = '';
                 for (var i = 1; i <= num; i++) {
@@ -189,5 +197,39 @@
             }
         }
     }
+    function getNum(){
+        number = parseInt(document.getElementById('page-select').value);
+    }
+
+    function getBlacklists(num) {
+        //获取黑名单列表
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/blacklist');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('num=' + num);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                var tbody = document.querySelector('.flat-table tbody');
+                tbody.innerHTML = '';
+                for (var i = 0; i < data.length; i++) {
+                    var tr = document.createElement('tr');
+                    var td1 = document.createElement('td');
+                    td1.innerHTML = data[i];
+                    var td2 = document.createElement('td');
+                    var button = document.createElement('button');
+                    button.innerHTML = '移除';
+                    button.setAttribute('class', 'action-button');
+                    button.setAttribute('name', data[i].ip);
+                    button.setAttribute('onclick', 'removeBlacklist(this)');
+                    td2.appendChild(button);
+                    tr.appendChild(td1);
+                    tr.appendChild(td2);
+                    tbody.appendChild(tr);
+                }
+            }
+        }
+    }
+
 </script>
 </html>

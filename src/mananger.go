@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
@@ -41,12 +42,29 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		mgrStatic(w, r, requestPath)
 	} else if requestPath == "/submitToken" && requestMethod == "POST" {
 		mgrAuth(w, r, db)
-	} else if requestPath == "/admin" {
+	} else if strings.Contains(requestPath, "admin") {
+		mgrCheckLogin(w, r, db)
+	}
+}
+
+func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	jwt, err := r.Cookie("jwt")
+	if err != nil {
+		w.Write([]byte("403 Forbidden"))
+		return
+	}
+	_, err = ParseJWT(jwt.Value)
+	if err != nil {
+		w.Write([]byte("403 Forbidden"))
+		return
+	}
+	requestPath := r.URL.Path
+	if requestPath == "/admin" {
 		mgrAdmin(w, r)
 	} else if strings.HasPrefix(requestPath, "/api") {
-		if requestPath == "/api/blacklist" {
+		if requestPath == "/api/admin/blacklist" {
 			apiBlacklist(w, r, db)
-		} else if requestPath == "/api/blacklistNum" {
+		} else if requestPath == "/api/admin/blacklist/num" {
 			apiBlacklistNum(w, r, db)
 		}
 	}
@@ -129,10 +147,12 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	r.ParseForm()
 	num := r.FormValue("num")
 	//将num转为int
+	fmt.Printf(num)
 	numint, err := strconv.Atoi(num)
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
-	rows, err := db.Query("select IP from IPblackList limit ?,?", numint, numint+10)
+	numint = numint * 10
+	rows, err := db.Query("select IP from IPblackList limit ?,?", numint-10, numint)
 	defer rows.Close()
 	var IP []string
 	for rows.Next() {
@@ -142,5 +162,7 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		IP = append(IP, ip)
 	}
 	//将IP转为json
-	w.Write([]byte("[" + strings.Join(IP, ",") + "]"))
+	IPjson, err := json.Marshal(IP)
+	checkerr(err)
+	w.Write(IPjson)
 }
