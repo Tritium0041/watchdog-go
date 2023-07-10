@@ -66,6 +66,8 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apiBlacklist(w, r, db)
 		} else if requestPath == "/api/admin/blacklist/num" {
 			apiBlacklistNum(w, r, db)
+		} else if requestPath == "/api/admin/blacklist/delete" {
+			apideleteBlacklist(w, r, db)
 		}
 	}
 }
@@ -165,4 +167,15 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	IPjson, err := json.Marshal(IP)
 	checkerr(err)
 	w.Write(IPjson)
+}
+
+func apideleteBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	IP := r.FormValue("ip")
+	fmt.Printf(IP)
+	state, err := db.Prepare("delete from IPblackList where IP=?")
+	checkerr(err)
+	_, err = state.Exec(IP)
+	checkerr(err)
+	w.Write([]byte("Success"))
 }

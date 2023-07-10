@@ -134,16 +134,16 @@
 </style>
 <img style="pointer-events: none;" src="https://api.yimian.xyz/img?type=wallpaper" class="backgroundImage">
 <div class="menu">
-    <button class="flat-button" name="blacklist" >
+    <button class="flat-button" name="blacklist" onclick="setVisible('blacklist')">
         IP黑名单
     </button>
-    <button class="flat-button" name="whitelist">
-        IP白名单
+    <button class="flat-button" name="requests" onclick="setVisible('requests')">
+        请求记录
     </button>
 
 </div>
 <div class="panel">
-    <div id="blacklist" style="">
+    <div id="blacklist" >
         <button class="flat-button" name="getblacklists" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;" onclick="getBlacklistsnum()">
             刷新黑名单信息
         </button>
@@ -166,11 +166,16 @@
 
 
     </div>
+    <div id="requests">
+        
+
+    </div>
 
 </div>
 </body>
 <script>
     var number;
+    var divIdList = ['blacklist', 'requests'];
     function getBlacklistsnum() {
         //获取黑名单数量并赋给下拉选单
         var xhr = new XMLHttpRequest();
@@ -220,8 +225,8 @@
                     var button = document.createElement('button');
                     button.innerHTML = '移除';
                     button.setAttribute('class', 'action-button');
-                    button.setAttribute('name', data[i].ip);
-                    button.setAttribute('onclick', 'removeBlacklist(this)');
+                    button.setAttribute('name', data[i]);
+                    button.setAttribute('onclick', 'removeBlacklist(this.name)');
                     td2.appendChild(button);
                     tr.appendChild(td1);
                     tr.appendChild(td2);
@@ -230,6 +235,44 @@
             }
         }
     }
+function setVisible(id) {
+    //将除id意外的div设置为隐藏
+    for (var i = 0; i < divIdList.length; i++) {
+        if (divIdList[i] !== id) {
+            document.getElementById(divIdList[i]).style.display = 'none';
+        } else {
+            document.getElementById(divIdList[i]).style.display = 'block';
+        }
+    }
+}
+function removeBlacklist(ip) {
+    //删除黑名单
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/admin/blacklist/delete');
+    xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+    xhr.send('ip=' + ip);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            if (xhr.responseText === 'Success') {
+                alert('删除成功');
+                getBlacklists(number);
+            } else {
+                alert('删除失败');
+            }
+        }
+    }
 
+}
+
+
+
+
+
+
+window.onload = function () {
+    setVisible('blacklist');
+    getBlacklistsnum();
+    getBlacklists(1);
+}
 </script>
 </html>
