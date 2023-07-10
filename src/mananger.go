@@ -28,7 +28,8 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
 		checkerr(err)
-
+		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null)")
+		checkerr(err)
 		db.Close()
 
 	}
@@ -68,6 +69,10 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apiBlacklistNum(w, r, db)
 		} else if requestPath == "/api/admin/blacklist/delete" {
 			apideleteBlacklist(w, r, db)
+		}
+		if requestPath == "/api/admin/requests" {
+		} else if requestPath == "/api/admin/requests/num" {
+			apiRequestsNum(w, r, db)
 		}
 	}
 }
@@ -178,4 +183,65 @@ func apideleteBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	_, err = state.Exec(IP)
 	checkerr(err)
 	w.Write([]byte("Success"))
+}
+
+func apiRequestsNum(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	rows, err := db.Query("select count(*) from HTTPtraffic")
+	checkerr(err)
+	defer rows.Close()
+	var num int
+	for rows.Next() {
+		err = rows.Scan(&num)
+		checkerr(err)
+	}
+	w.Write([]byte(strconv.Itoa(num)))
+}
+func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	num := r.FormValue("num")
+	//将num转为int
+	fmt.Printf(num)
+	numint, err := strconv.Atoi(num)
+	checkerr(err)
+	//num是页数，取出10(num-1)-10num的IP
+	numint = numint * 10
+	rows, err := db.Query("select * from HTTPtraffic limit ?,?", numint-10, numint)
+	defer rows.Close()
+	var (
+		sourceIP       []string
+		requestHost    []string
+		requestPath    []string
+		requestMethod  []string
+		requestTime    []int
+		requestContent []string
+	)
+	for rows.Next() {
+		var (
+			ip      string
+			host    string
+			path    string
+			method  string
+			time    int
+			content string
+		)
+		err = rows.Scan(&ip, &host, &path, &method, &time, &content)
+		checkerr(err)
+		sourceIP = append(sourceIP, ip)
+		requestHost = append(requestHost, host)
+		requestPath = append(requestPath, path)
+		requestMethod = append(requestMethod, method)
+		requestTime = append(requestTime, time)
+		requestContent = append(requestContent, content)
+	}
+	//转为json
+	requests := make(map[string]interface{})
+	requests["sourceIP"] = sourceIP
+	requests["requestHost"] = requestHost
+	requests["requestPath"] = requestPath
+	requests["requestMethod"] = requestMethod
+	requests["requestTime"] = requestTime
+	requests["requestContent"] = requestContent
+	requestsjson, err := json.Marshal(requests)
+	checkerr(err)
+	w.Write(requestsjson)
 }

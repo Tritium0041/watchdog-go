@@ -33,6 +33,7 @@ func recordTraffic(r *http.Request) {
 		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
 		checkerr(err)
 		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null)")
+		checkerr(err)
 		db.Close()
 	}
 	// 打开数据库

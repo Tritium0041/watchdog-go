@@ -148,9 +148,8 @@
             刷新黑名单信息
         </button>
         <div class="dropdown">
-        <label for="page-select">选择页数</label>
-        <select id="page-select" onfocus="getNum();getBlacklists(number)" onchange="getNum();getBlacklists(number)">
-            <!-- 添加更多页数选项 -->
+        <label for="blacklist-page-select">选择页数</label>
+        <select id="blacklist-page-select" onfocus="getBlacklistSelectNum();getBlacklists(number)" onchange="getBlacklistSelectNum();getBlacklists(number)">
         </select>
         </div>
         <table class="flat-table">
@@ -167,15 +166,55 @@
 
     </div>
     <div id="requests">
-        
-
+        <button class="flat-button" name="getrequests" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;" onclick="getRequestsnum()">
+            刷新请求记录
+        </button>
+        <div class="dropdown">
+            <label for="requests-page-select">选择页数</label>
+            <select id="requests-page-select" onfocus="getRequestsSelectNum();getRequests(number)" onchange="getRequestsSelectNum();getRequests(number)">
+                <!-- 添加更多页数选项 -->
+            </select>
+        </div>
+        <table class="flat-table">
+            <thead>
+            <tr>
+                <th>源IP</th>
+                <th>请求地址</th>
+                <th>请求方法</th>
+                <th>请求内容</th>
+                <th>请求时间</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 
 </div>
 </body>
-<script>
-    var number;
+<script class="main">
     var divIdList = ['blacklist', 'requests'];
+    function setVisible(id) {
+        //将除id意外的div设置为隐藏
+        for (var i = 0; i < divIdList.length; i++) {
+            if (divIdList[i] !== id) {
+                document.getElementById(divIdList[i]).style.display = 'none';
+            } else {
+                document.getElementById(divIdList[i]).style.display = 'block';
+            }
+        }
+    }
+    window.onload = function () {
+        setVisible('blacklist');
+        getBlacklistsnum();
+        getBlacklists(1);
+    }
+
+</script>
+<script class="blacklist">
+    var number;
+
     function getBlacklistsnum() {
         //获取黑名单数量并赋给下拉选单
         var xhr = new XMLHttpRequest();
@@ -191,7 +230,7 @@
                 } else {
                     num = parseInt(num / 10) + 1;
                 }
-                var select = document.getElementById('page-select');
+                var select = document.getElementById('blacklist-page-select');
                 select.innerHTML = '';
                 for (var i = 1; i <= num; i++) {
                     var option = document.createElement('option');
@@ -202,8 +241,8 @@
             }
         }
     }
-    function getNum(){
-        number = parseInt(document.getElementById('page-select').value);
+    function getBlacklistSelectNum(){
+        number = parseInt(document.getElementById('blacklist-page-select').value);
     }
 
     function getBlacklists(num) {
@@ -235,16 +274,7 @@
             }
         }
     }
-function setVisible(id) {
-    //将除id意外的div设置为隐藏
-    for (var i = 0; i < divIdList.length; i++) {
-        if (divIdList[i] !== id) {
-            document.getElementById(divIdList[i]).style.display = 'none';
-        } else {
-            document.getElementById(divIdList[i]).style.display = 'block';
-        }
-    }
-}
+
 function removeBlacklist(ip) {
     //删除黑名单
     var xhr = new XMLHttpRequest();
@@ -263,16 +293,77 @@ function removeBlacklist(ip) {
     }
 
 }
-
-
-
-
-
-
-window.onload = function () {
-    setVisible('blacklist');
-    getBlacklistsnum();
-    getBlacklists(1);
-}
+</script>
+<script class="requests">
+    function getRequestsnum() {
+        //获取请求记录数量并赋给下拉选单
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/admin/requests/num');
+        xhr.send();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var num = xhr.responseText;
+                num = parseInt(num);
+                //num整除10加1
+                if (num % 10 === 0) {
+                    num = num / 10;
+                } else {
+                    num = parseInt(num / 10) + 1;
+                }
+                var select = document.getElementById('requests-page-select');
+                select.innerHTML = '';
+                for (var i = 1; i <= num; i++) {
+                    var option = document.createElement('option');
+                    option.value = i;
+                    option.innerHTML = '第' + i + '页';
+                    select.appendChild(option);
+                }
+            }
+        }
+    }
+    function getRequestsSelectNum(){
+        number = parseInt(document.getElementById('requests-page-select').value);
+    }
+    function getRequests(num) {
+        //获取请求记录列表
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/requests');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('num=' + num);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                var tbody = document.querySelector('.flat-table tbody');
+                tbody.innerHTML = '';
+                for (var i = 0; i < data.length; i++) {
+                    var tr = document.createElement('tr');
+                    var td1 = document.createElement('td');
+                    td1.innerHTML = data[i].ip;
+                    var td2 = document.createElement('td');
+                    td2.innerHTML = data[i].url;
+                    var td3 = document.createElement('td');
+                    td3.innerHTML = data[i].method;
+                    var td4 = document.createElement('td');
+                    td4.innerHTML = data[i].data;
+                    var td5 = document.createElement('td');
+                    td5.innerHTML = data[i].time;
+                    var td6 = document.createElement('td');
+                    var button = document.createElement('button');
+                    button.innerHTML = '移除';
+                    button.setAttribute('class', 'action-button');
+                    button.setAttribute('name', data[i].id);
+                    button.setAttribute('onclick', 'removeRequest(this.name)');
+                    td6.appendChild(button);
+                    tr.appendChild(td1);
+                    tr.appendChild(td2);
+                    tr.appendChild(td3);
+                    tr.appendChild(td4);
+                    tr.appendChild(td5);
+                    tr.appendChild(td6);
+                    tbody.appendChild(tr);
+                }
+            }
+        }
+    }
 </script>
 </html>
