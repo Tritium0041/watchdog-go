@@ -28,7 +28,7 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
 		checkerr(err)
-		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null)")
+		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
 		checkerr(err)
 		db.Close()
 

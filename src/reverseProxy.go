@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -32,7 +35,7 @@ func recordTraffic(r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
 		checkerr(err)
-		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null)")
+		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
 		checkerr(err)
 		db.Close()
 	}
@@ -42,14 +45,20 @@ func recordTraffic(r *http.Request) {
 	checkerr(err)
 	requestPath := r.URL.Path
 	requestMethod := r.Method
-	requestContent := r.Body
+	var requestContent string
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r.Body)
+	requestContent = buf.String()
 	// 获取请求的host
 	requestHost := r.Host
 	// 获取请求的IP
 	requestIP := r.RemoteAddr
 	// 获取请求的时间
 	requestTime := time.Now().Unix()
-	// 将请求的信息写入数据库
-	_, err = db.Exec("insert into HTTPtraffic (sourceIP, requestHost, requestPath, requestMethod, requestTime, requestContent) values (?, ?, ?, ?, ?, ?)", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent)
+	requestQuery := r.URL.RawQuery
+	requestHeader, err := json.Marshal(r.Header)
+	checkerr(err)
+	fmt.Printf("requestIP: %s\nrequestHost: %s\nrequestPath: %s\nrequestMethod: %s\nrequestTime: %d\nrequestContent: %s\nrequestQuery: %s\nrequestHeader: %s\n", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
+	_, err = db.Exec("insert into HTTPtraffic (sourceIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader) values (?, ?, ?, ?, ?, ?, ?, ?)", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
 	checkerr(err)
 }
