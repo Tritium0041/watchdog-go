@@ -159,7 +159,7 @@
                 <th>操作</th>
             </tr>
             </thead>
-            <tbody>
+            <tbody name="blacklist">
             </tbody>
         </table>
 
@@ -181,12 +181,13 @@
                 <th>源IP</th>
                 <th>请求地址</th>
                 <th>请求方法</th>
-                <th>请求内容</th>
+                <th>Query</th>
+                <th>Content</th>
                 <th>请求时间</th>
                 <th>操作</th>
             </tr>
             </thead>
-            <tbody>
+            <tbody name="requests">
             </tbody>
         </table>
     </div>
@@ -254,7 +255,7 @@
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                var tbody = document.querySelector('.flat-table tbody');
+                var tbody = document.querySelector('tbody[name="blacklist"]');
                 tbody.innerHTML = '';
                 for (var i = 0; i < data.length; i++) {
                     var tr = document.createElement('tr');
@@ -333,33 +334,36 @@ function removeBlacklist(ip) {
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                var tbody = document.querySelector('.flat-table tbody');
+                var tbody = document.querySelector('tbody[name="requests"]');
                 tbody.innerHTML = '';
-                for (var i = 0; i < data.length; i++) {
+                for (var i = 0; i < data["id"].length; i++) {
                     var tr = document.createElement('tr');
                     var td1 = document.createElement('td');
-                    td1.innerHTML = data[i].ip;
+                    td1.innerHTML = data["sourceIP"][i];
                     var td2 = document.createElement('td');
-                    td2.innerHTML = data[i].url;
+                    td2.innerHTML = data["requestHost"][i]+data["requestPath"][i];
                     var td3 = document.createElement('td');
-                    td3.innerHTML = data[i].method;
+                    td3.innerHTML = data["requestMethod"][i];
                     var td4 = document.createElement('td');
-                    td4.innerHTML = data[i].data;
+                    td4.innerHTML = data["requestQuery"][i];
                     var td5 = document.createElement('td');
-                    td5.innerHTML = data[i].time;
+                    td5.innerHTML = data["requestContent"][i];
                     var td6 = document.createElement('td');
+                    time = new Date(data["requestTime"][i]);
+                    td6.innerHTML = time.toLocaleString();
+                    var td7 = document.createElement('td');
                     var button = document.createElement('button');
-                    button.innerHTML = '移除';
+                    button.innerHTML = '发送至反打生成';
                     button.setAttribute('class', 'action-button');
-                    button.setAttribute('name', data[i].id);
-                    button.setAttribute('onclick', 'removeRequest(this.name)');
-                    td6.appendChild(button);
+                    button.setAttribute('name', data["id"][i]);
+                    td7.appendChild(button);
                     tr.appendChild(td1);
                     tr.appendChild(td2);
                     tr.appendChild(td3);
                     tr.appendChild(td4);
                     tr.appendChild(td5);
                     tr.appendChild(td6);
+                    tr.appendChild(td7);
                     tbody.appendChild(tr);
                 }
             }

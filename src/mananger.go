@@ -71,6 +71,7 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apideleteBlacklist(w, r, db)
 		}
 		if requestPath == "/api/admin/requests" {
+			apiRequests(w, r, db)
 		} else if requestPath == "/api/admin/requests/num" {
 			apiRequestsNum(w, r, db)
 		}
@@ -205,42 +206,55 @@ func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
 	numint = numint * 10
-	rows, err := db.Query("select * from HTTPtraffic limit ?,?", numint-10, numint)
+	rows, err := db.Query("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?", numint-10, numint)
 	defer rows.Close()
 	var (
+		ID             []int
 		sourceIP       []string
 		requestHost    []string
 		requestPath    []string
 		requestMethod  []string
 		requestTime    []int
 		requestContent []string
+		requestQuery   []string
+		requestHeader  []string
 	)
 	for rows.Next() {
 		var (
+			id      int
 			ip      string
 			host    string
 			path    string
 			method  string
 			time    int
 			content string
+			query   string
+			header  string
 		)
-		err = rows.Scan(&ip, &host, &path, &method, &time, &content)
+		err = rows.Scan(&id, &ip, &host, &path, &method, &time, &content, &query, &header)
 		checkerr(err)
+		ID = append(ID, id)
 		sourceIP = append(sourceIP, ip)
 		requestHost = append(requestHost, host)
 		requestPath = append(requestPath, path)
 		requestMethod = append(requestMethod, method)
 		requestTime = append(requestTime, time)
 		requestContent = append(requestContent, content)
+		requestQuery = append(requestQuery, query)
+		requestHeader = append(requestHeader, header)
+
 	}
 	//转为json
 	requests := make(map[string]interface{})
+	requests["id"] = ID
 	requests["sourceIP"] = sourceIP
 	requests["requestHost"] = requestHost
 	requests["requestPath"] = requestPath
 	requests["requestMethod"] = requestMethod
 	requests["requestTime"] = requestTime
 	requests["requestContent"] = requestContent
+	requests["requestQuery"] = requestQuery
+	requests["requestHeader"] = requestHeader
 	requestsjson, err := json.Marshal(requests)
 	checkerr(err)
 	w.Write(requestsjson)
