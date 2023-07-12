@@ -130,6 +130,36 @@
         background-color: #f9f9f9;
         color: black;
     }
+    .flat-input {
+        border: none;
+        border-radius: 0;
+        background-color: #ffffff;
+        padding: 10px;
+        font-size: 16px;
+        color: #333;
+        box-shadow: none;
+        transition: background-color 0.3s ease;
+        position: absolute;
+
+    }
+
+    /* 鼠标悬停时的样式 */
+    .flat-input:hover {
+        background-color: #e0e0e0;
+    }
+
+    /* 获得焦点时的样式 */
+    .flat-input:focus {
+        outline: none;
+        background-color: #fff;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 禁用状态的样式 */
+    .flat-input:disabled {
+        background-color: #ddd;
+        cursor: not-allowed;
+    }
 
 </style>
 <img style="pointer-events: none;" src="https://api.yimian.xyz/img?type=wallpaper" class="backgroundImage">
@@ -139,6 +169,9 @@
     </button>
     <button class="flat-button" name="requests" onclick="setVisible('requests')">
         请求记录
+    </button>
+    <button class="flat-button" name="sites" onclick="setVisible('sites')">
+        站点管理
     </button>
 
 </div>
@@ -191,11 +224,25 @@
             </tbody>
         </table>
     </div>
-
+    <div id="sites">
+        <button class="flat-button" name="getsites" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;" onclick="getSites()">
+            刷新站点信息
+        </button>
+        <div class="dropdown">
+            <label for="site-Url">站点Url</label>
+            <select id="site-Url" onfocus="getSitesrules()">
+            </select>
+        </div>
+        <input type="checkbox" id="wafsqli" name="wafsqli" style="position: absolute;top:15%;left:10%;">
+        <label for="wafsqli" style="position: absolute;top:15%;left:12%;">SQL防护</label>
+        <input type="checkbox" id="wafrce" name="wafrce" style="position: absolute;top:17%;left:10%;">
+        <label for="wafrce" style="position: absolute;top:17%;left:12%;">RCE防护</label>
+        
+    </div>
 </div>
 </body>
 <script class="main">
-    var divIdList = ['blacklist', 'requests'];
+    var divIdList = ['blacklist', 'requests',"sites"];
     function setVisible(id) {
         //将除id意外的div设置为隐藏
         for (var i = 0; i < divIdList.length; i++) {
