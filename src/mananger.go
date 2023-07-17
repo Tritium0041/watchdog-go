@@ -30,7 +30,7 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
 		checkerr(err)
-		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteWorkDir text not null,rule text not null,sqlEnabled bool not null,rceEnabled bool not null)")
+		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteworkdir text not null,sitedomain text not null,rule text not null,sqlenabled bool not null,rceenabled bool not null)")
 		checkerr(err)
 		db.Close()
 
@@ -77,6 +77,15 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		} else if requestPath == "/api/admin/requests/num" {
 			apiRequestsNum(w, r, db)
 		}
+		if requestPath == "/api/admin/sites" {
+			apiSites(w, r, db)
+		} else if requestPath == "/api/admin/sites/rules" {
+			apiSiteRules(w, r, db)
+		} else if requestPath == "/api/admin/sites/rules/add" {
+			apiAddRules(w, r, db)
+		} else if requestPath == "/api/admin/sites/rules/delete" {
+			apideleteRule(w, r, db)
+		}
 	}
 }
 
@@ -101,8 +110,9 @@ func mgrAuth(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	sha1er := sha1.New()
 	sha1er.Write([]byte(Token))
 	hashedtoken := sha1er.Sum(nil)
-	//查询数据库
-	rows, err := db.Query("select username from user where password=?", fmt.Sprintf("%x", hashedtoken))
+	state, err := db.Prepare("select username from user where password=?")
+	checkerr(err)
+	rows, err := state.Query(fmt.Sprintf("%x", hashedtoken))
 	checkerr(err)
 	defer rows.Close()
 	var username string
@@ -162,7 +172,10 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
 	numint = numint * 10
-	rows, err := db.Query("select IP from IPblackList limit ?,?", numint-10, numint)
+	state, err := db.Prepare("select IP from IPblackList limit ?,?")
+	checkerr(err)
+	rows, err := state.Query(numint-10, numint)
+	checkerr(err)
 	defer rows.Close()
 	var IP []string
 	for rows.Next() {
@@ -208,7 +221,11 @@ func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
 	numint = numint * 10
-	rows, err := db.Query("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?", numint-10, numint)
+	state, err := db.Prepare("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?")
+	checkerr(err)
+	rows, err := state.Query(numint-10, numint)
+	checkerr(err)
+	//rows, err := db.Query("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?", numint-10, numint)
 	defer rows.Close()
 	var (
 		ID             []int
@@ -260,4 +277,137 @@ func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	requestsjson, err := json.Marshal(requests)
 	checkerr(err)
 	w.Write(requestsjson)
+}
+
+func apiSites(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	row, err := db.Query("select site from sites")
+	checkerr(err)
+	defer row.Close()
+	var sites []string
+	for row.Next() {
+		var site string
+		err = row.Scan(&site)
+		checkerr(err)
+		sites = append(sites, site)
+	}
+	sitesjson, err := json.Marshal(sites)
+	checkerr(err)
+	w.Write(sitesjson)
+}
+
+func apiSiteRules(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	domain := r.FormValue("domain")
+	state, err := db.Prepare("select id,host,siteworkdir,sitedomain,rule,sqlenabled,rceenabled from sites where sitedomain=?")
+	checkerr(err)
+	row, err := state.Query(domain)
+	checkerr(err)
+	defer row.Close()
+	var (
+		id          int
+		host        string
+		siteworkdir string
+		sitedomain  string
+		rule        string
+		sqlenabled  bool
+		rceenabled  bool
+	)
+	for row.Next() {
+		err = row.Scan(&id, &host, &siteworkdir, &sitedomain, &rule, &sqlenabled, &rceenabled)
+		checkerr(err)
+	}
+	siterules := make(map[string]interface{})
+	siterules["id"] = id
+	siterules["host"] = host
+	siterules["siteworkdir"] = siteworkdir
+	siterules["sitedomain"] = sitedomain
+	siterules["rules"] = rule
+	siterules["sqlenabled"] = sqlenabled
+	siterules["rceenabled"] = rceenabled
+	siterulesjson, err := json.Marshal(siterules)
+	checkerr(err)
+	w.Write(siterulesjson)
+}
+
+func apiAddRules(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	domain := r.FormValue("domain")
+	sqli := r.FormValue("sqli")
+	rce := r.FormValue("rce")
+	rule := r.FormValue("rule")
+	ruleType := r.FormValue("type")
+	//先处理sqli和rce
+	var sqlenabled bool
+	var rceenabled bool
+	if sqli == "true" {
+		sqlenabled = true
+	} else {
+		sqlenabled = false
+	}
+	if rce == "true" {
+		rceenabled = true
+	} else {
+		rceenabled = false
+	}
+	state, err := db.Prepare("update sites set sqlenabled=?,rceenabled=? where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(sqlenabled, rceenabled, domain)
+	checkerr(err)
+	//再处理rule
+	if rule == "" {
+		w.Write([]byte("Success"))
+		return
+	}
+	state, err = db.Prepare("select rule from sites where sitedomain=?")
+	checkerr(err)
+	row, err := state.Query(domain)
+	defer row.Close()
+	var oldrule string
+	for row.Next() {
+		err = row.Scan(&oldrule)
+		checkerr(err)
+	}
+	var oldrules []string
+	json.Unmarshal([]byte(oldrule), &oldrules)
+	newRule := make(map[string]string)
+	newRule["type"] = ruleType
+	newRule["rule"] = rule
+	oldrules = append(oldrules, rule)
+	newrulesjson, err := json.Marshal(oldrules)
+	checkerr(err)
+	state, err = db.Prepare("update sites set rule=? where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(string(newrulesjson), domain)
+	checkerr(err)
+	w.Write([]byte("Success"))
+}
+
+func apideleteRule(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	domain := r.FormValue("domain")
+	rule := r.FormValue("rule")
+	state, err := db.Prepare("select rule from sites where sitedomain=?")
+	checkerr(err)
+	row, err := state.Query(domain)
+	defer row.Close()
+	var oldrule string
+	for row.Next() {
+		err = row.Scan(&oldrule)
+		checkerr(err)
+	}
+	var oldrules []string
+	json.Unmarshal([]byte(oldrule), &oldrules)
+	var newrules []string
+	for _, v := range oldrules {
+		if v != rule {
+			newrules = append(newrules, v)
+		}
+	}
+	newrulesjson, err := json.Marshal(newrules)
+	checkerr(err)
+	state, err = db.Prepare("update sites set rule=? where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(string(newrulesjson), domain)
+	checkerr(err)
+	w.Write([]byte("Success"))
 }
