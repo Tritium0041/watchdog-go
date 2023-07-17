@@ -30,6 +30,8 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
 		checkerr(err)
+		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteWorkDir text not null,rule text not null,sqlEnabled bool not null,rceEnabled bool not null)")
+		checkerr(err)
 		db.Close()
 
 	}
