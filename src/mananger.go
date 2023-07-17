@@ -30,7 +30,7 @@ func mananger(w http.ResponseWriter, r *http.Request) {
 		checkerr(err)
 		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
 		checkerr(err)
-		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteworkdir text not null,sitedomain text not null,rule text not null,sqlenabled bool not null,rceenabled bool not null)")
+		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteworkdir text,sitedomain text not null,rule text,sqlenabled bool not null,rceenabled bool not null)")
 		checkerr(err)
 		db.Close()
 
@@ -79,6 +79,10 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		}
 		if requestPath == "/api/admin/sites" {
 			apiSites(w, r, db)
+		} else if requestPath == "/api/admin/sites/add" {
+			apiAddSite(w, r, db)
+		} else if requestPath == "/api/admin/sites/delete" {
+			apideleteSite(w, r, db)
 		} else if requestPath == "/api/admin/sites/rules" {
 			apiSiteRules(w, r, db)
 		} else if requestPath == "/api/admin/sites/rules/add" {
@@ -408,6 +412,32 @@ func apideleteRule(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	state, err = db.Prepare("update sites set rule=? where sitedomain=?")
 	checkerr(err)
 	_, err = state.Exec(string(newrulesjson), domain)
+	checkerr(err)
+	w.Write([]byte("Success"))
+}
+
+func apiAddSite(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	sitedomain := r.FormValue("domain")
+	siteworkdir := r.FormValue("workdir")
+	host := r.FormValue("url")
+	var (
+		sqlenabled bool   = true
+		rceenabled bool   = true
+		rule       string = "[]"
+	)
+	state, err := db.Prepare("insert into sites(host,siteworkdir,sitedomain,rule,sqlenabled,rceenabled) values(?,?,?,?,?,?)")
+	checkerr(err)
+	_, err = state.Exec(host, siteworkdir, sitedomain, rule, sqlenabled, rceenabled)
+	checkerr(err)
+	w.Write([]byte("Success"))
+}
+func apideleteSite(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	domain := r.FormValue("domain")
+	state, err := db.Prepare("delete from sites where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(domain)
 	checkerr(err)
 	w.Write([]byte("Success"))
 }

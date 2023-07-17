@@ -263,6 +263,9 @@
                 <option value="keyword">关键字</option>
             </select>
         </div>
+        <button class="flat-button" style="position: absolute;top:55%;left: 30%;background-color: firebrick;width: 10%" onclick="deleteSite()">
+            删除站点
+        </button>
         <button class="flat-button" style="position: absolute;top:55%;left: 10%;width:10%" onclick="submitNewRule()">提交</button>
         <h1 style="color: rgba(0,181,206,0.75);background-color: #333333;border-radius: 3px;position: absolute;top:60%;left: 10%">添加站点⬇️</h1>
         <div style="position: absolute;top:70%;left:10%;width: 15%;height: 30%">
@@ -543,6 +546,40 @@ function removeBlacklist(ip) {
         xhr.open('POST', '/api/admin/sites/rules/delete');
         xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
         xhr.send('domain=' + host + '&rule=' + rule);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                if (xhr.responseText === 'Success') {
+                    alert('删除成功');
+                } else {
+                    alert('删除失败');
+                }
+            }
+        }
+    }
+    function addSite(){
+        var host = document.getElementById('newSite').value;
+        var workdir = document.getElementById('Path').value;
+        var url = document.getElementById('Url').value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/sites/add');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('domain=' + host+ '&workdir=' + workdir+ '&url=' + url);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                if (xhr.responseText === 'Success') {
+                    alert('添加成功');
+                } else {
+                    alert('添加失败');
+                }
+            }
+        }
+    }
+    function deleteSite(){
+        var host = document.getElementById('site-Url').value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/sites/delete');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('domain=' + host);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 if (xhr.responseText === 'Success') {
