@@ -284,7 +284,7 @@ func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 func apiSites(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	row, err := db.Query("select site from sites")
+	row, err := db.Query("select sitedomain from sites")
 	checkerr(err)
 	defer row.Close()
 	var sites []string
@@ -376,7 +376,8 @@ func apiAddRules(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	newRule := make(map[string]string)
 	newRule["type"] = ruleType
 	newRule["rule"] = rule
-	oldrules = append(oldrules, rule)
+	newRuleJson, err := json.Marshal(newRule)
+	oldrules = append(oldrules, string(newRuleJson))
 	newrulesjson, err := json.Marshal(oldrules)
 	checkerr(err)
 	state, err = db.Prepare("update sites set rule=? where sitedomain=?")
@@ -403,11 +404,14 @@ func apideleteRule(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	json.Unmarshal([]byte(oldrule), &oldrules)
 	var newrules []string
 	for _, v := range oldrules {
-		if v != rule {
+		var rulemap map[string]string
+		json.Unmarshal([]byte(v), &rulemap)
+		if rulemap["rule"] != rule {
 			newrules = append(newrules, v)
 		}
 	}
 	newrulesjson, err := json.Marshal(newrules)
+	fmt.Printf(string(newrulesjson))
 	checkerr(err)
 	state, err = db.Prepare("update sites set rule=? where sitedomain=?")
 	checkerr(err)

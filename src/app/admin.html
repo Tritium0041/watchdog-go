@@ -251,7 +251,7 @@
                 <th>删除</th>
             </tr>
             </thead>
-            <tbody name="sites">
+            <tbody id="site-rules">
             </tbody>
         </table>
         <input type="text" id="newRule" class="flat-input" style="position: absolute;top:40%;left:10%;" placeholder="添加新规则">
@@ -507,6 +507,7 @@ function removeBlacklist(ip) {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
                 var rules = JSON.parse(data["rules"]);
+                console.log(rules);
                 document.getElementById("nowSite").innerText = host;
                 if(data["sqlenabled"]){
                     document.getElementById('wafsqli').checked = true;
@@ -518,17 +519,20 @@ function removeBlacklist(ip) {
                 } else {
                     document.getElementById('wafrce').checked = false;
                 }
+                var tbody = document.getElementById('site-rules');
+                tbody.innerHTML = '';
                 for(var i = 0;i<rules.length;i++){
+                    var rule = JSON.parse(rules[i].replaceAll('\\"','"'));
                     var tr = document.createElement('tr');
                     var td1 = document.createElement('td');
-                    td1.innerHTML = rules[i]["type"];
+                    td1.innerHTML = rule["type"]
                     var td2 = document.createElement('td');
-                    td2.innerHTML = rules[i]["rule"];
+                    td2.innerHTML = rule["rule"];
                     var td3 = document.createElement('td');
                     var button = document.createElement('button');
                     button.innerHTML = '删除';
                     button.setAttribute('class', 'action-button');
-                    button.setAttribute('value', rules[i]["rule"]);
+                    button.setAttribute('id', rule["rule"]);
                     button.setAttribute('onclick', 'deleteRule(this)');
                     td3.appendChild(button);
                     tr.appendChild(td1);
@@ -541,7 +545,7 @@ function removeBlacklist(ip) {
     }
     function deleteRule(element){
         var host = document.getElementById('site-Url').value;
-        var rule = element.value;
+        var rule = element.id;
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/admin/sites/rules/delete');
         xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
