@@ -19,7 +19,7 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 		mananger(w, r)
 	} else {
 		recordTraffic(r)
-		//TODO 记录后开始处理请求 我先去把webui写了
+		handleRequest(w, r)
 
 	}
 
