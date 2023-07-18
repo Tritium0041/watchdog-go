@@ -4,11 +4,11 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -17,28 +17,8 @@ import (
 var f embed.FS
 
 func mananger(w http.ResponseWriter, r *http.Request) {
-	_, err := os.Stat(sqlite_file)
-	if err != nil {
-		// 如果数据库不存在，则创建数据库
-		db, err := sql.Open("sqlite3", sqlite_file)
-		checkerr(err)
-		_, err = db.Exec("create table user (id integer not null primary key autoincrement, username text not null, password text not null)")
-		checkerr(err)
-		_, err = db.Exec("insert into user (username, password) values ('admin', 'd033e22ae348aeb5660fc2140aec35850c4da997')")
-		checkerr(err)
-		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
-		checkerr(err)
-		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
-		checkerr(err)
-		_, err = db.Exec("create table sites (id integer not null primary key autoincrement,host text not null,siteworkdir text,sitedomain text not null,rule text,sqlenabled bool not null,rceenabled bool not null)")
-		checkerr(err)
-		db.Close()
-
-	}
-	// 打开数据库
-	db, err := sql.Open("sqlite3", sqlite_file)
+	db := getdb()
 	defer db.Close()
-	checkerr(err)
 	requestPath := r.URL.Path
 	requestMethod := r.Method
 	if requestPath == "/" || strings.HasPrefix(requestPath, "/static") {
@@ -444,4 +424,67 @@ func apideleteSite(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	_, err = state.Exec(domain)
 	checkerr(err)
 	w.Write([]byte("Success"))
+}
+
+func apiharmfulfilesNum(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	row, err := db.Query("select count(*) from harmfulfiles")
+	checkerr(err)
+	defer row.Close()
+	var num int
+	for row.Next() {
+		err = row.Scan(&num)
+		checkerr(err)
+	}
+	w.Write([]byte(strconv.Itoa(num)))
+}
+
+func apiHarmfulfiles(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	page := r.FormValue("page")
+	numint, err := strconv.Atoi(page)
+	checkerr(err)
+	numint = numint * 10
+	state, err := db.Prepare("select * from harmfulcodes limit ?,?")
+	checkerr(err)
+	row, err := state.Query(numint-10, numint)
+	var (
+		id       []int
+		filename []string
+		linenum  []int
+		content  []string
+		sites    []string
+	)
+	for row.Next() {
+		var (
+			idInt          int
+			filenameString string
+			linenumInt     int
+			contentString  string
+		)
+		err = row.Scan(&idInt, &filenameString, &linenumInt, &contentString)
+		checkerr(err)
+		id = append(id, idInt)
+		filename = append(filename, filenameString)
+		linenum = append(linenum, linenumInt)
+		encoding := base64.Encoding{}
+		contentString = encoding.EncodeToString([]byte(contentString))
+		content = append(content, contentString)
+	}
+	state, err = db.Prepare("select sitedomain from harmfulfiles where filename=?")
+	checkerr(err)
+	for _, v := range filename {
+		var sitedomain string
+		err = state.QueryRow(v).Scan(&sitedomain)
+		checkerr(err)
+		sites = append(sites, sitedomain)
+	}
+	var data = make(map[string]interface{})
+	data["id"] = id
+	data["filename"] = filename
+	data["linenum"] = linenum
+	data["content"] = content
+	data["sites"] = sites
+	jsondata, err := json.Marshal(data)
+	checkerr(err)
+	w.Write(jsondata)
 }

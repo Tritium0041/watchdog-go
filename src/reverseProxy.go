@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 )
 
@@ -24,25 +25,8 @@ func handleHttp(w http.ResponseWriter, r *http.Request) {
 
 }
 func recordTraffic(r *http.Request) {
-	_, err := os.Stat(sqlite_file)
-	if err != nil {
-		// 如果数据库不存在，则创建数据库
-		db, err := sql.Open("sqlite3", sqlite_file)
-		checkerr(err)
-		_, err = db.Exec("create table user (id integer not null primary key autoincrement, username text not null, password text not null)")
-		checkerr(err)
-		_, err = db.Exec("insert into user (username, password) values ('admin', 'd033e22ae348aeb5660fc2140aec35850c4da997')")
-		checkerr(err)
-		_, err = db.Exec("create table IPblackList (id integer not null primary key autoincrement, IP text not null)")
-		checkerr(err)
-		_, err = db.Exec("create table HTTPtraffic (id integer not null primary key autoincrement, sourceIP text not null, requestHost text not null, requestPath text not null, requestMethod text not null, requestTime integer not null,requestContent text not null,requestQuery text not null,requestHeader text not null)")
-		checkerr(err)
-		db.Close()
-	}
-	// 打开数据库
-	db, err := sql.Open("sqlite3", sqlite_file)
+	db := getdb()
 	defer db.Close()
-	checkerr(err)
 	requestPath := r.URL.Path
 	requestMethod := r.Method
 	var requestContent string
@@ -61,4 +45,121 @@ func recordTraffic(r *http.Request) {
 	fmt.Printf("requestIP: %s\nrequestHost: %s\nrequestPath: %s\nrequestMethod: %s\nrequestTime: %d\nrequestContent: %s\nrequestQuery: %s\nrequestHeader: %s\n", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
 	_, err = db.Exec("insert into HTTPtraffic (sourceIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader) values (?, ?, ?, ?, ?, ?, ?, ?)", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
 	checkerr(err)
+}
+
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+	db := getdb()
+	defer db.Close()
+	host := r.Host
+	state, err := db.Prepare("select count(*) from sites where sitedomain = ?")
+	checkerr(err)
+	var count int
+	err = state.QueryRow(host).Scan(&count)
+	checkerr(err)
+	if count == 0 {
+		// 如果数据库中没有这个域名的记录，则返回404
+		w.WriteHeader(404)
+	} else {
+		if !filterRequest(r, db) {
+			genshin, err := f.ReadFile("genshin.txt")
+			checkerr(err)
+			w.Write(genshin)
+			return
+		}
+		DestContent(w, r)
+	}
+
+}
+
+func filterRequest(r *http.Request, db *sql.DB) bool {
+	host := r.Host
+	Header, err := json.Marshal(r.Header)
+	checkerr(err)
+	Path := r.URL.Path
+	Query := r.URL.RawQuery
+	var requestContent string
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r.Body)
+	requestContent = buf.String()
+	state, err := db.Prepare("select rule,sqlenabled,rceenabled from sites where sitedomain = ?")
+	checkerr(err)
+	var (
+		sqlenabled bool
+		rceenabled bool
+		rule       string
+	)
+	err = state.QueryRow(host).Scan(&rule, &sqlenabled, &rceenabled)
+	checkerr(err)
+	if sqlenabled {
+		if !(wafsqli(string(Header) + Query + requestContent)) {
+			return false
+		}
+	}
+	if rceenabled {
+		if !(wafRCE(string(Header) + Query + requestContent)) {
+			return false
+		}
+	}
+	rule = strings.ReplaceAll(rule, "\\\"", "\"")
+	var rules []string
+	err = json.Unmarshal([]byte(rule), &rules)
+	checkerr(err)
+	for _, certainrule := range rules {
+		var rul map[string]string
+		err = json.Unmarshal([]byte(certainrule), &rul)
+		checkerr(err)
+		switch {
+		case rul["type"] == "prefix":
+			if strings.HasPrefix(Path, rul["rule"]) {
+				return false
+			}
+		case rul["type"] == "suffix":
+			if strings.HasSuffix(Path, rul["rule"]) {
+				return false
+			}
+		case rul["type"] == "contains":
+			if strings.Contains(Path, rul["rule"]) {
+				return false
+			}
+		}
+
+	}
+	return true
+}
+
+func DestContent(w http.ResponseWriter, r *http.Request) {
+	db := getdb()
+	defer db.Close()
+	host := r.Host
+	state, err := db.Prepare("select host from sites where sitedomain = ?")
+	checkerr(err)
+	var desthost string
+	err = state.QueryRow(host).Scan(&desthost)
+	checkerr(err)
+	Method := r.Method
+	Path := r.URL.Path
+	Query := r.URL.RawQuery
+	var requestContent string
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r.Body)
+	requestContent = buf.String()
+	checkerr(err)
+	var desturl string
+	if Query == "" {
+		desturl = "http://" + desthost + Path
+	} else {
+		desturl = "http://" + desthost + Path + "?" + Query
+	}
+	client := &http.Client{}
+	req, err := http.NewRequest(Method, desturl, strings.NewReader(requestContent))
+	checkerr(err)
+	for k, v := range r.Header {
+		req.Header.Set(k, v[0])
+	}
+	resp, err := client.Do(req)
+	for k, v := range resp.Header {
+		w.Header().Set(k, v[0])
+	}
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }

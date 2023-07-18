@@ -173,6 +173,9 @@
     <button class="flat-button" name="sites" onclick="setVisible('sites')">
         站点管理
     </button>
+    <button class="flat-button" name="harmfulfiles" onclick="setVisible('harmfulfiles')">
+        有害文件
+    </button>
 
 </div>
 <div class="panel">
@@ -280,10 +283,34 @@
 <!--            更新站点信息-->
 <!--        </button>-->
     </div>
+    <div id="harmfulfiles">
+        <button class="flat-button" name="getharmfulfiles" style="position:absolute;left: 5%;top:5%;width: 10%;height: 5%;" onclick="getSites()">
+            刷新有害文件信息
+        </button>
+        <div class="dropdown">
+            <label for="harmfulfiles-page-select">选择页数</label>
+            <select id="harmfulfiles-page-select" onfocus="getharmfulfilesSelectNum();getharmfulfiles(number)" onchange="getharmfulfilesSelectNum();getharmfulfiles(number)">
+                <!-- 添加更多页数选项 -->
+            </select>
+        </div>
+        <table class="flat-table">
+            <thead>
+            <tr>
+                <th>文件路径</th>
+                <th>行号</th>
+                <th>所属网站</th>
+                <th>下载</th>
+            </tr>
+            </thead>
+            <tbody name="harmfulfiles">
+            </tbody>
+        </table>
+
+    </div>
 </div>
 </body>
 <script class="main">
-    var divIdList = ['blacklist', 'requests',"sites"];
+    var divIdList = ['blacklist', 'requests',"sites","harmfulfiles"];
     function setVisible(id) {
         //将除id意外的div设置为隐藏
         for (var i = 0; i < divIdList.length; i++) {
@@ -590,6 +617,70 @@ function removeBlacklist(ip) {
                     alert('删除成功');
                 } else {
                     alert('删除失败');
+                }
+            }
+        }
+    }
+</script>
+<script class="harmfulfiles">
+    function getHarmfulfilesNum() {
+     var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/admin/harmfulfiles/num');
+        xhr.send();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var num = xhr.responseText
+                num = parseInt(num);
+                //num整除10加1
+                if (num % 10 === 0) {
+                    num = num / 10;
+                } else {
+                    num = parseInt(num / 10) + 1;
+                }
+                var select = document.getElementById('harmfulfiles-page-select');
+                select.innerHTML = '';
+                for (var i = 1; i <= num; i++) {
+                    var option = document.createElement('option');
+                    option.value = i;
+                    option.innerHTML = "第" + i + "页";
+                    select.appendChild(option);
+                }
+            }
+        }
+
+ }
+    function getHarmfulfiles(element) {
+        var page = element.value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/harmfulfiles');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('page=' + page);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                var tbody = document.getElementById('harmfulfiles');
+                tbody.innerHTML = '';
+                for(var i=0;i<data["id"].length;i++){
+                    var tr = document.createElement('tr');
+                    var td1 = document.createElement('td');
+                    td1.innerHTML = data["filename"][i];
+                    var td2 = document.createElement('td');
+                    td2.innerHTML = data["linenum"][i];
+                    var content = self.atob(data["content"][i]);
+                    var td3 = document.createElement('td');
+                    td3.innerHTML = content;
+                    var td4 = document.createElement('td');
+                    var button = document.createElement('button');
+                    button.innerHTML = '下载';
+                    button.setAttribute('class', 'action-button');
+                    button.setAttribute('id', data["id"][i]);
+                    button.setAttribute('onclick', 'downloadFile(this)');
+                    td4.appendChild(button);
+                    tr.appendChild(td1);
+                    tr.appendChild(td2);
+                    tr.appendChild(td3);
+                    tr.appendChild(td4);
+                    document.getElementById('harmfulfiles').appendChild(tr);
                 }
             }
         }
