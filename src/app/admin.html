@@ -404,7 +404,6 @@ function removeBlacklist(ip) {
         if (xhr.readyState === 4 && xhr.status === 200) {
             if (xhr.responseText === 'Success') {
                 alert('删除成功');
-                getBlacklists(number);
             } else {
                 alert('删除失败');
             }
@@ -414,7 +413,7 @@ function removeBlacklist(ip) {
 }
 
 function addBlackist(){
-        var ip = document.getElementById('blacklist-ip').value;
+        var ip = document.getElementById('new-blacklist-ip').value;
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/admin/blacklist/add');
         xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
@@ -423,7 +422,6 @@ function addBlackist(){
             if (xhr.readyState === 4 && xhr.status === 200) {
                 if (xhr.responseText === 'Success') {
                     alert('添加成功');
-                    getBlacklists(number);
                 } else {
                     alert('添加失败');
                 }
