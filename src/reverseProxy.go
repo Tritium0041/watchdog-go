@@ -42,7 +42,7 @@ func recordTraffic(r *http.Request) {
 	requestQuery := r.URL.RawQuery
 	requestHeader, err := json.Marshal(r.Header)
 	checkerr(err)
-	fmt.Printf("requestIP: %s\nrequestHost: %s\nrequestPath: %s\nrequestMethod: %s\nrequestTime: %d\nrequestContent: %s\nrequestQuery: %s\nrequestHeader: %s\n", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
+	//fmt.Printf("requestIP: %s\nrequestHost: %s\nrequestPath: %s\nrequestMethod: %s\nrequestTime: %d\nrequestContent: %s\nrequestQuery: %s\nrequestHeader: %s\n", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
 	_, err = db.Exec("insert into HTTPtraffic (sourceIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader) values (?, ?, ?, ?, ?, ?, ?, ?)", requestIP, requestHost, requestPath, requestMethod, requestTime, requestContent, requestQuery, requestHeader)
 	checkerr(err)
 }
@@ -61,7 +61,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	} else {
 		if !filterRequest(r, db) {
-			genshin, err := f.ReadFile("genshin.txt")
+			genshin, err := f.ReadFile("app/genshin.txt")
 			checkerr(err)
 			w.Write(genshin)
 			return
@@ -73,10 +73,22 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 func filterRequest(r *http.Request, db *sql.DB) bool {
 	host := r.Host
-	Header, err := json.Marshal(r.Header)
-	checkerr(err)
+	//Header, err := json.Marshal(r.Header)
+	//checkerr(err)
 	Path := r.URL.Path
 	Query := r.URL.RawQuery
+	sourceIP := strings.Split(r.RemoteAddr, ":")[0]
+	row, err := db.Query("select count(*) from IPblackList where IP = ?", sourceIP)
+	checkerr(err)
+	var count int
+	for row.Next() {
+		err = row.Scan(&count)
+		checkerr(err)
+	}
+	if count != 0 {
+		return false
+	}
+
 	var requestContent string
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(r.Body)
@@ -91,16 +103,15 @@ func filterRequest(r *http.Request, db *sql.DB) bool {
 	err = state.QueryRow(host).Scan(&rule, &sqlenabled, &rceenabled)
 	checkerr(err)
 	if sqlenabled {
-		if !(wafsqli(string(Header) + Query + requestContent)) {
+		if !(wafsqli(Query + requestContent)) {
 			return false
 		}
 	}
 	if rceenabled {
-		if !(wafRCE(string(Header) + Query + requestContent)) {
+		if !(wafRCE(Query + requestContent)) {
 			return false
 		}
 	}
-	rule = strings.ReplaceAll(rule, "\\\"", "\"")
 	var rules []string
 	err = json.Unmarshal([]byte(rule), &rules)
 	checkerr(err)
@@ -108,6 +119,7 @@ func filterRequest(r *http.Request, db *sql.DB) bool {
 		var rul map[string]string
 		err = json.Unmarshal([]byte(certainrule), &rul)
 		checkerr(err)
+		fmt.Println(rul)
 		switch {
 		case rul["type"] == "prefix":
 			if strings.HasPrefix(Path, rul["rule"]) {
@@ -150,6 +162,7 @@ func DestContent(w http.ResponseWriter, r *http.Request) {
 	} else {
 		desturl = "http://" + desthost + Path + "?" + Query
 	}
+	fmt.Println(desturl)
 	client := &http.Client{}
 	req, err := http.NewRequest(Method, desturl, strings.NewReader(requestContent))
 	checkerr(err)

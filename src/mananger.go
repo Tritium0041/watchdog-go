@@ -51,6 +51,8 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apiBlacklistNum(w, r, db)
 		} else if requestPath == "/api/admin/blacklist/delete" {
 			apideleteBlacklist(w, r, db)
+		} else if requestPath == "/api/admin/blacklist/add" {
+			apiAddBlacklist(w, r, db)
 		}
 		if requestPath == "/api/admin/requests" {
 			apiRequests(w, r, db)
@@ -69,6 +71,11 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apiAddRules(w, r, db)
 		} else if requestPath == "/api/admin/sites/rules/delete" {
 			apideleteRule(w, r, db)
+		}
+		if requestPath == "/api/admin/harmfulfiles/num" {
+			apiharmfulfilesNum(w, r, db)
+		} else if requestPath == "/api/admin/harmfulfiles" {
+			apiHarmfulfiles(w, r, db)
 		}
 	}
 }
@@ -156,9 +163,9 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
 	numint = numint * 10
-	state, err := db.Prepare("select IP from IPblackList limit ?,?")
+	state, err := db.Prepare("select IP from IPblackList limit ?,10")
 	checkerr(err)
-	rows, err := state.Query(numint-10, numint)
+	rows, err := state.Query(numint - 10)
 	checkerr(err)
 	defer rows.Close()
 	var IP []string
@@ -172,6 +179,17 @@ func apiBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	IPjson, err := json.Marshal(IP)
 	checkerr(err)
 	w.Write(IPjson)
+}
+
+func apiAddBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	IP := r.FormValue("ip")
+	fmt.Printf(IP)
+	state, err := db.Prepare("insert into IPblackList(IP) values(?)")
+	checkerr(err)
+	_, err = state.Exec(IP)
+	checkerr(err)
+	w.Write([]byte("Success"))
 }
 
 func apideleteBlacklist(w http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -205,9 +223,9 @@ func apiRequests(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	checkerr(err)
 	//num是页数，取出10(num-1)-10num的IP
 	numint = numint * 10
-	state, err := db.Prepare("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?")
+	state, err := db.Prepare("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,10")
 	checkerr(err)
-	rows, err := state.Query(numint-10, numint)
+	rows, err := state.Query(numint - 10)
 	checkerr(err)
 	//rows, err := db.Query("select id,sourceIP,requestHost,requestPath,requestMethod,requestTime,requestContent,requestquery,requestHeader from HTTPtraffic limit ?,?", numint-10, numint)
 	defer rows.Close()
@@ -444,9 +462,9 @@ func apiHarmfulfiles(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	numint, err := strconv.Atoi(page)
 	checkerr(err)
 	numint = numint * 10
-	state, err := db.Prepare("select * from harmfulcodes limit ?,?")
+	state, err := db.Prepare("select * from harmfulcodes limit ?,10")
 	checkerr(err)
-	row, err := state.Query(numint-10, numint)
+	row, err := state.Query(numint - 10)
 	var (
 		id       []int
 		filename []string

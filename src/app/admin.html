@@ -195,10 +195,13 @@
                 <th>操作</th>
             </tr>
             </thead>
-            <tbody name="blacklist">
+            <tbody id="blacklist-tbody">
             </tbody>
         </table>
-
+        <input class="flat-input" style="position: absolute;top:5%;left:50%;width: 10%;"placeholder="添加黑名单IP" id="new-blacklist-ip">
+        <button class="flat-button" style="position: absolute;top:5%;left:65%;width: 10%;" onclick="addBlackist()">
+            添加
+        </button>
 
     </div>
     <div id="requests">
@@ -223,7 +226,7 @@
                 <th>操作</th>
             </tr>
             </thead>
-            <tbody name="requests">
+            <tbody id="requests-tbody">
             </tbody>
         </table>
     </div>
@@ -302,7 +305,7 @@
                 <th>下载</th>
             </tr>
             </thead>
-            <tbody name="harmfulfiles">
+            <tbody id="harmfulfiles-tbody">
             </tbody>
         </table>
 
@@ -370,7 +373,7 @@
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                var tbody = document.querySelector('tbody[name="blacklist"]');
+                var tbody = document.getElementsByName('blacklist')[0];
                 tbody.innerHTML = '';
                 for (var i = 0; i < data.length; i++) {
                     var tr = document.createElement('tr');
@@ -407,6 +410,25 @@ function removeBlacklist(ip) {
             }
         }
     }
+
+}
+
+function addBlackist(){
+        var ip = document.getElementById('blacklist-ip').value;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/blacklist/add');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('ip=' + ip);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                if (xhr.responseText === 'Success') {
+                    alert('添加成功');
+                    getBlacklists(number);
+                } else {
+                    alert('添加失败');
+                }
+            }
+        }
 
 }
 </script>
@@ -449,7 +471,7 @@ function removeBlacklist(ip) {
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                var tbody = document.querySelector('tbody[name="requests"]');
+                var tbody = document.getElementById('requests-tbody')
                 tbody.innerHTML = '';
                 for (var i = 0; i < data["id"].length; i++) {
                     var tr = document.createElement('tr');
@@ -623,7 +645,7 @@ function removeBlacklist(ip) {
     }
 </script>
 <script class="harmfulfiles">
-    function getHarmfulfilesNum() {
+    function getharmfulfilesSelectNum() {
      var xhr = new XMLHttpRequest();
         xhr.open('GET', '/api/admin/harmfulfiles/num');
         xhr.send();
@@ -649,7 +671,7 @@ function removeBlacklist(ip) {
         }
 
  }
-    function getHarmfulfiles(element) {
+    function getharmfulfiles(element) {
         var page = element.value;
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/admin/harmfulfiles');
