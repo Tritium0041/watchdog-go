@@ -373,7 +373,7 @@
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 var data = JSON.parse(xhr.responseText);
-                var tbody = document.getElementsByName('blacklist')[0];
+                var tbody = document.getElementById('blacklist-tbody');
                 tbody.innerHTML = '';
                 for (var i = 0; i < data.length; i++) {
                     var tr = document.createElement('tr');
