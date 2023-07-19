@@ -426,6 +426,7 @@ func apiAddSite(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	r.ParseForm()
 	sitedomain := r.FormValue("domain")
 	siteworkdir := r.FormValue("workdir")
+	backupFiles(siteworkdir, sitedomain)
 	host := r.FormValue("url")
 	var (
 		sqlenabled bool   = true
@@ -442,6 +443,14 @@ func apideleteSite(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	r.ParseForm()
 	domain := r.FormValue("domain")
 	state, err := db.Prepare("delete from sites where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(domain)
+	checkerr(err)
+	state, err = db.Prepare("delete from harmfulcodes where sitedomain=?")
+	checkerr(err)
+	_, err = state.Exec(domain)
+	checkerr(err)
+	state, err = db.Prepare("delete from harmfulfiles where sitedomain=?")
 	checkerr(err)
 	_, err = state.Exec(domain)
 	checkerr(err)

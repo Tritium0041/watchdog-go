@@ -1,7 +1,11 @@
 package main
 
 import (
+	"archive/zip"
+	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -74,6 +78,65 @@ func loadFiles() {
 	}
 }
 
+func backupFiles(path string, site string) {
+	outputPath := "./backup/" + site + ".zip"
+	zipfile, err := os.Create(outputPath)
+	checkerr(err)
+	defer zipfile.Close()
+	zipWriter := zip.NewWriter(zipfile)
+	defer zipWriter.Close()
+	err = filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		file, err := os.Open(filePath)
+		checkerr(err)
+		defer file.Close()
+		if !info.IsDir() {
+			// 获取文件在ZIP中的相对路径
+			relativePath, err := filepath.Rel(path, filePath)
+			checkerr(err)
+			// 在ZIP中创建文件
+			f, err := zipWriter.Create(relativePath)
+			checkerr(err)
+			// 将文件内容拷贝到ZIP中
+			_, err = io.Copy(f, file)
+			checkerr(err)
+		}
+		return nil
+	})
+	checkerr(err)
+}
+
+func checkFilesExist() {
+	db := getdb()
+	defer db.Close()
+	rows, err := db.Query("select filename,siteworkdir,sitedomain from files")
+	checkerr(err)
+	for rows.Next() {
+		var (
+			filename    string
+			siteworkdir string
+			sitedomain  string
+		)
+		err = rows.Scan(&filename, &siteworkdir, &sitedomain)
+		checkerr(err)
+		if _, err := os.Stat(filename); os.IsNotExist(err) {
+			cmd := exec.Command("unzip", "./backup/"+sitedomain+".zip", "-d", "/tmp/"+sitedomain)
+			err := cmd.Run()
+			checkerr(err)
+			tmpfilename := "/tmp/" + sitedomain + "/" + strings.Replace(filename, siteworkdir, "", 1)
+			cmd = exec.Command("mv", tmpfilename, filename)
+			err = cmd.Run()
+			checkerr(err)
+			cmd = exec.Command("rm", "-rf", "/tmp/"+sitedomain)
+			err = cmd.Run()
+			checkerr(err)
+		}
+	}
+	rows.Close()
+}
+
 func checkeVulnableFile(filePath string) bool {
 	file, err := os.ReadFile(filePath)
 	checkerr(err)
@@ -86,6 +149,7 @@ func checkfilesmain() {
 		select {
 		case <-timer.C:
 			loadFiles()
+			checkFilesExist()
 		}
 	}
 }
