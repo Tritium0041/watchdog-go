@@ -705,5 +705,13 @@ function addBlackist(){
             }
         }
     }
+
+    function downloadFile(element){
+        var id = element.id;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/harmfulfiles/download');
+        xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+        xhr.send('id=' + id);
+    }
 </script>
 </html>

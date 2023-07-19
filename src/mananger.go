@@ -9,6 +9,8 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -76,6 +78,8 @@ func mgrCheckLogin(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			apiharmfulfilesNum(w, r, db)
 		} else if requestPath == "/api/admin/harmfulfiles" {
 			apiHarmfulfiles(w, r, db)
+		} else if requestPath == "/api/admin/harmfulfiles/download" {
+			downloadFile(w, r, db)
 		}
 	}
 }
@@ -505,4 +509,25 @@ func apiHarmfulfiles(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	jsondata, err := json.Marshal(data)
 	checkerr(err)
 	w.Write(jsondata)
+}
+
+func downloadFile(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	r.ParseForm()
+	id := r.FormValue("id")
+	state, err := db.Prepare("select filename from harmfulcodes where id=?")
+	checkerr(err)
+	row, err := state.Query(id)
+	defer row.Close()
+	var filename string
+	for row.Next() {
+		err = row.Scan(&filename)
+		checkerr(err)
+	}
+	file, err := os.ReadFile(filename)
+	checkerr(err)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	pureFileName := path.Base(filename)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", pureFileName))
+	w.Write(file)
+
 }
